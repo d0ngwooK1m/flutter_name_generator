@@ -18,14 +18,20 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class RandomWords extends ConsumerWidget {
+class RandomWords extends ConsumerStatefulWidget {
   const RandomWords({
     Key? key,
   }) : super(key: key);
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState createState() => _RandomWordsState();
+}
+
+class _RandomWordsState extends ConsumerState<RandomWords> {
+  @override
+  Widget build(BuildContext context) {
     final suggestions = ref.watch(suggestionStateNotifierProvider);
+    final saved = ref.watch(savedStateNotifierProvider);
     const biggerFont = TextStyle(fontSize: 18);
 
     return Scaffold(
@@ -35,8 +41,7 @@ class RandomWords extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.list),
             onPressed: () {
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (context) => const FavoriteList()));
+              Navigator.of(context).push(MaterialPageRoute(builder: (context) => const FavoriteList()));
             },
             tooltip: 'Saved Suggestions',
           ),
@@ -55,34 +60,27 @@ class RandomWords extends ConsumerWidget {
             if (index >= suggestions.length) {
               suggestions.addAll(generateWordPairs().take(10));
             }
-            final alreadySaved = ref.watch(checkContainStateNotifierProvider);
+            final alreadySaved = saved
+                .contains(suggestions[index]);
             return ListTile(
               title: Text(
                 suggestions[index].asPascalCase,
                 style: biggerFont,
               ),
               trailing: Icon(
-                alreadySaved
-                    ? Icons.favorite
-                    : Icons.favorite_border,
-                color: alreadySaved
-                    ? Colors.red
-                    : null,
-                semanticLabel: alreadySaved
-                    ? 'Remove from saved'
-                    : 'Save',
+                alreadySaved ? Icons.favorite : Icons.favorite_border,
+                color: alreadySaved ? Colors.red : null,
+                semanticLabel: alreadySaved ? 'Remove from saved' : 'Save',
               ),
               onTap: () {
                 if (alreadySaved) {
                   ref
                       .read(savedStateNotifierProvider.notifier)
                       .remove(suggestions[index]);
-                  ref.read(checkContainStateNotifierProvider.notifier).isContain(ref.watch(savedStateNotifierProvider), suggestions[index]);
                 } else {
                   ref
                       .read(savedStateNotifierProvider.notifier)
                       .add(suggestions[index]);
-                  ref.read(checkContainStateNotifierProvider.notifier).isContain(ref.watch(savedStateNotifierProvider), suggestions[index]);
                 }
               },
             );
@@ -110,10 +108,10 @@ class FavoriteList extends ConsumerWidget {
     });
     final divided = tiles.isNotEmpty
         ? ListTile.divideTiles(
-            context: context,
-            tiles: tiles,
-            color: Colors.black,
-          ).toList()
+      context: context,
+      tiles: tiles,
+      color: Colors.black,
+    ).toList()
         : <Widget>[];
 
     return Scaffold(
@@ -128,7 +126,7 @@ class FavoriteList extends ConsumerWidget {
 }
 
 final suggestionStateNotifierProvider =
-    StateNotifierProvider<SuggestionStateNotifier, List<WordPair>>(
+StateNotifierProvider<SuggestionStateNotifier, List<WordPair>>(
         (_) => SuggestionStateNotifier());
 
 class SuggestionStateNotifier extends StateNotifier<List<WordPair>> {
@@ -140,7 +138,7 @@ class SuggestionStateNotifier extends StateNotifier<List<WordPair>> {
 }
 
 final savedStateNotifierProvider =
-    StateNotifierProvider<SavedStatedNotifier, Set<WordPair>>(
+StateNotifierProvider<SavedStatedNotifier, Set<WordPair>>(
         (_) => SavedStatedNotifier());
 
 class SavedStatedNotifier extends StateNotifier<Set<WordPair>> {
@@ -151,20 +149,6 @@ class SavedStatedNotifier extends StateNotifier<Set<WordPair>> {
   }
 
   void remove(WordPair word) {
-    state = state.where((element) => element == word).toSet();
-  }
-}
-
-final currentTile = Provider((_) => throw UnimplementedError());
-
-final checkContainStateNotifierProvider =
-    StateNotifierProvider<CheckContainStateNotifier, bool>(
-        (ref) => CheckContainStateNotifier());
-
-class CheckContainStateNotifier extends StateNotifier<bool> {
-  CheckContainStateNotifier() : super(false);
-
-  void isContain(Set<WordPair> set, WordPair word) {
-    state = set.contains(word);
+    state = state.where((element) => element != word).toSet();
   }
 }
